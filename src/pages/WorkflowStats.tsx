@@ -6,6 +6,7 @@ import {
     VictoryChart,
     VictoryHistogram,
     VictoryLabel,
+    VictoryStack,
     VictoryTooltip,
     VictoryVoronoiContainer
 } from 'victory';
@@ -61,11 +62,15 @@ export const WorkflowStats = ({owner, repo, workflowId}: Props) => {
                     const createdAtTime = Date.parse(run.created_at)
                     const updatedAtTime = Date.parse(run.updated_at)
                     const durationMs = updatedAtTime - createdAtTime
+                    if (durationMs > (250 * 60 * 1000)) {
+                      continue
+                    }
                     stats.durations[run.conclusion].push(durationMs / 1000)
 
                     stats.earliestRun = Math.min(stats.earliestRun, createdAtTime)
                     stats.latestRun = Math.max(stats.latestRun, createdAtTime)
                 }
+
 
                 console.log("stats", stats)
                 setLoading(false)
@@ -149,25 +154,40 @@ export const WorkflowStats = ({owner, repo, workflowId}: Props) => {
                                     x={500}
                                     y={25}
                                     textAnchor="middle"
-                                    text="Duration of successful runs"
+                                    text="Duration of successful/failure runs"
                                 />
 
                                 <VictoryAxis dependentAxis label="Total number of runs"/>
                                 <VictoryAxis label="Time (minutes)"/>
+                              
+                                <VictoryStack>
+                                  <VictoryHistogram
+                                      style={{data: {fill: "#28a745", strokeWidth: 0}}}
+                                      binSpacing={5}
+                                      bins={50} // TODO: make the number of bins dynamic - perhaps a heuristic based on the number of data points?
+                                      // data must be in this format: [ {x: t1}, {x: t2}, ... ]
+                                      // also convert duration from second to minutes
+                                      data={
+                                          workflowRunsStats.durations.success.map(successDuration => ({
+                                              x: successDuration / 60
+                                          }))
 
-                                <VictoryHistogram
-                                    style={{data: {fill: "#28a745", strokeWidth: 0}}}
-                                    binSpacing={5}
-                                    bins={50} // TODO: make the number of bins dynamic - perhaps a heuristic based on the number of data points?
-                                    // data must be in this format: [ {x: t1}, {x: t2}, ... ]
-                                    // also convert duration from second to minutes
-                                    data={
-                                        workflowRunsStats.durations.success.map(successDuration => ({
-                                            x: successDuration / 60
-                                        }))
+                                      }
+                                  />
+                                  <VictoryHistogram
+                                      style={{data: {fill: "#822727", strokeWidth: 0}}}
+                                      binSpacing={5}
+                                      bins={50} // TODO: make the number of bins dynamic - perhaps a heuristic based on the number of data points?
+                                      // data must be in this format: [ {x: t1}, {x: t2}, ... ]
+                                      // also convert duration from second to minutes
+                                      data={
+                                          workflowRunsStats.durations.failure.map(successDuration => ({
+                                              x: successDuration / 60
+                                          }))
 
-                                    }
-                                />
+                                      }
+                                  />
+                                </VictoryStack>
                             </VictoryChart>
                         </Flex>
                     </Box>
